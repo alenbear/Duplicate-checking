@@ -5,6 +5,16 @@ from sklearn.metrics.pairwise import cosine_similarity
 from fuzzywuzzy import fuzz
 
 
+def classify_text_by_length(text, char_threshold=5000, word_threshold=1000):
+    num_chars = len(text)
+    num_words = len(text.split())
+
+    if num_chars > char_threshold or num_words > word_threshold:
+        return 'Large Text'
+    else:
+        return 'Small Text'
+
+
 def compare_files_with_textdistance(original_file_path, plagiarized_file_path):
     """
     使用 textdistance 库、scikit-learn 和 fuzzywuzzy 库比较两个文件的相似度，并融合成一个综合相似度。
@@ -16,6 +26,17 @@ def compare_files_with_textdistance(original_file_path, plagiarized_file_path):
 
             original_content = original_file.read()
             plagiarized_content = plagiarized_file.read()
+
+            # 判断文本大小
+            text_size_category = classify_text_by_length(original_content)
+            if text_size_category == 'Large Text':
+                levenshtein_weight = 0.2
+                cosine_weight = 0.4
+                fuzzy_weight = 0.4
+            else:
+                levenshtein_weight = 0.4
+                cosine_weight = 0.3
+                fuzzy_weight = 0.3
 
             # 使用 Levenshtein 距离计算相似度
             levenshtein_similarity = textdistance.levenshtein.normalized_similarity(original_content,
@@ -31,9 +52,9 @@ def compare_files_with_textdistance(original_file_path, plagiarized_file_path):
 
             # 融合多个相似度值
             combined_similarity = (
-                    0.4 * levenshtein_similarity +
-                    0.4 * cosine_sim +
-                    0.2 * fuzzy_similarity
+                    levenshtein_weight * levenshtein_similarity +
+                    cosine_weight * cosine_sim +
+                    fuzzy_weight * fuzzy_similarity
             )
 
     except FileNotFoundError as e:
@@ -60,7 +81,7 @@ def main():
     # 计算综合相似度
     combined_similarity = compare_files_with_textdistance(original_file_path, plagiarized_file_path)
 
-    print(f"综合相似度: {combined_similarity:.2f}")
+    print(f"综合相似度: {combined_similarity * 100:.2f}%")
 
 
 if __name__ == "__main__":
