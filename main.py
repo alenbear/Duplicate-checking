@@ -5,7 +5,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from fuzzywuzzy import fuzz
 
 
-def classify_text_by_length(text, char_threshold=5000, word_threshold=1000):
+def classify_text_by_length(text, char_threshold=50000, word_threshold=10000):
     num_chars = len(text)
     num_words = len(text.split())
 
@@ -15,7 +15,7 @@ def classify_text_by_length(text, char_threshold=5000, word_threshold=1000):
         return 'Small Text'
 
 
-def compare_files_with_textdistance(original_file_path, plagiarized_file_path):
+def compare_files(original_file_path, plagiarized_file_path):
     """
     使用 textdistance 库、scikit-learn 和 fuzzywuzzy 库比较两个文件的相似度，并融合成一个综合相似度。
     """
@@ -29,14 +29,15 @@ def compare_files_with_textdistance(original_file_path, plagiarized_file_path):
 
             # 判断文本大小
             text_size_category = classify_text_by_length(original_content)
+            print('文本类型:', text_size_category)
             if text_size_category == 'Large Text':
                 levenshtein_weight = 0.2
-                cosine_weight = 0.4
-                fuzzy_weight = 0.4
+                cosine_weight = 0.6
+                fuzzy_weight = 0.2
             else:
                 levenshtein_weight = 0.4
-                cosine_weight = 0.3
-                fuzzy_weight = 0.3
+                cosine_weight = 0.2
+                fuzzy_weight = 0.4
 
             # 使用 Levenshtein 距离计算相似度
             levenshtein_similarity = textdistance.levenshtein.normalized_similarity(original_content,
@@ -70,18 +71,26 @@ def compare_files_with_textdistance(original_file_path, plagiarized_file_path):
 
 def main():
     # 检查命令行参数数量
-    if len(sys.argv) != 3:
-        print("使用方法: python main.py [原文文件] [抄袭版论文的文件]")
+    if len(sys.argv) != 4:
+        print("使用方法: python main.py [原文文件] [抄袭版论文的文件] [答案文件]")
         sys.exit(1)
 
     # 获取命令行参数
     original_file_path = sys.argv[1]
     plagiarized_file_path = sys.argv[2]
+    answer_file_path = sys.argv[3]
 
     # 计算综合相似度
-    combined_similarity = compare_files_with_textdistance(original_file_path, plagiarized_file_path)
+    combined_similarity = compare_files(original_file_path, plagiarized_file_path)
 
-    print(f"综合相似度: {combined_similarity * 100:.2f}%")
+    # 将相似度结果写入答案文件
+    try:
+        with open(answer_file_path, 'w', encoding='utf-8') as answer_file:
+            answer_file.write(f"综合相似度: {combined_similarity * 100:.2f}%\n")
+        print(f"综合相似度已写入文件: {answer_file_path}")
+    except Exception as e:
+        print(f"写入文件时发生错误: {e}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
