@@ -1,9 +1,12 @@
 import sys
+import time
+import cProfile
+import pstats
+import io
 import textdistance
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from fuzzywuzzy import fuzz
-
 
 def classify_text_by_length(text, char_threshold=50000, word_threshold=10000):
     num_chars = len(text)
@@ -14,11 +17,11 @@ def classify_text_by_length(text, char_threshold=50000, word_threshold=10000):
     else:
         return 'Small Text'
 
-
 def compare_files(original_file_path, plagiarized_file_path):
     """
     使用 textdistance 库、scikit-learn 和 fuzzywuzzy 库比较两个文件的相似度，并融合成一个综合相似度。
     """
+    start_time = time.time()  # 记录开始时间
     try:
         # 读取原文文件和抄袭版文件的内容
         with open(original_file_path, 'r', encoding='utf-8') as original_file, \
@@ -65,9 +68,12 @@ def compare_files(original_file_path, plagiarized_file_path):
         print(f"处理文件时发生错误: {e}")
         sys.exit(1)
 
+    end_time = time.time()  # 记录结束时间
+    elapsed_time = end_time - start_time
+    print(f"compare_files 函数执行时间: {elapsed_time:.2f} 秒")
+
     # 返回综合相似度
     return combined_similarity
-
 
 def main():
     # 检查命令行参数数量
@@ -79,6 +85,10 @@ def main():
     original_file_path = sys.argv[1]
     plagiarized_file_path = sys.argv[2]
     answer_file_path = sys.argv[3]
+
+    # 使用 cProfile 记录性能数据
+    pr = cProfile.Profile()
+    pr.enable()
 
     # 计算综合相似度
     combined_similarity = compare_files(original_file_path, plagiarized_file_path)
@@ -92,6 +102,14 @@ def main():
         print(f"写入文件时发生错误: {e}")
         sys.exit(1)
 
+    pr.disable()
+    s = io.StringIO()
+    ps = pstats.Stats(pr, stream=s).sort_stats(pstats.SortKey.TIME)
+    ps.print_stats()
+
+    # 输出性能分析结果
+    print("性能分析结果：")
+    print(s.getvalue())
 
 if __name__ == "__main__":
     main()
